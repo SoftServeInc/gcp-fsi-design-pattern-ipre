@@ -1,0 +1,153 @@
+import datetime
+
+from airflow import models
+from airflow.contrib.operators.dataflow_operator import DataflowTemplateOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from airflow.utils.dates import days_ago
+
+# Required for the monkey patch
+from airflow.contrib.hooks.gcp_dataflow_hook import DataFlowHook, _DataflowJob
+# We redefine the function that handles the environment keys 
+# that are used to build the RuntimeEnvironment, to include 'ipConfiguration'
+def _start_template_dataflow(self, name, variables, parameters,
+                             dataflow_template):
+    # Builds RuntimeEnvironment from variables dictionary
+    # https://cloud.google.com/dataflow/docs/reference/rest/v1b3/RuntimeEnvironment
+    environment = {}
+    for key in ['numWorkers', 'maxWorkers', 'zone', 'serviceAccountEmail',
+                'tempLocation', 'bypassTempDirValidation', 'machineType',
+                'additionalExperiments', 'network', 'subnetwork', 'additionalUserLabels',
+                'ipConfiguration']:
+        if key in variables:
+            environment.update({key: variables[key]})
+    body = {"jobName": name,
+            "parameters": parameters,
+            "environment": environment}
+    service = self.get_conn()
+    request = service.projects().locations().templates().launch(
+        projectId=variables['project'],
+        location=variables['region'],
+        gcsPath=dataflow_template,
+        body=body
+    )
+    response = request.execute(num_retries=self.num_retries)
+    variables = self._set_variables(variables)
+    _DataflowJob(self.get_conn(), variables['project'], name, variables['region'],
+                 self.poll_sleep, num_retries=self.num_retries).wait_for_done()
+    return response
+# Monkey patching
+DataFlowHook._start_template_dataflow = _start_template_dataflow
+
+bucket_path = models.Variable.get("bucket_path")
+project_id = models.Variable.get("project_id")
+gce_zone = models.Variable.get("gce_zone")
+gce_region = models.Variable.get("gce_region")
+gce_network = models.Variable.get("gce_network")
+gce_subnetwork = models.Variable.get("gce_subnetwork")
+
+default_args = {
+    # Tell airflow to start one day ago, so that it runs as soon as you upload it
+    "start_date": days_ago(1),
+    "dataflow_default_options": {
+        "project": project_id,
+        # Set to your region
+        "region": gce_region,
+        # Set to your zone
+        "zone": gce_zone,
+        # This is a subfolder for storing temporary files, like the staged pipeline job.
+        "temp_location": bucket_path + "/tmp/",
+        # Use dedicated network for Dataflow workers
+        "network": gce_network,
+        "subnetwork": "regions/" + gce_region + "/subnetworks/" + gce_subnetwork,
+        # Use private IP addresses
+        "ipConfiguration": "WORKER_IP_PRIVATE",
+    },
+}
+
+# Define a DAG (directed acyclic graph) of tasks.
+# Any task you create within the context manager is automatically added to the
+# DAG object.
+with models.DAG(
+    # The id you will see in the DAG airflow page
+    "${file_name}-dag",
+    default_args=default_args,
+    # The interval with which to schedule the DAG
+    schedule_interval=None,  # Override to match your needs
+) as dag:
+
+    start_template_job = DataflowTemplateOperator(
+        # The task id of your job
+        task_id="dataflow-operator-${file_name}",
+        # The name of the template that you're using.
+        # Below is a list of all the templates you can use.
+        # For versions in non-production environments, use the subfolder 'latest'
+        # https://cloud.google.com/dataflow/docs/guides/templates/provided-batch#gcstexttobigquery
+        template="gs://dataflow-templates/latest/GCS_Text_to_BigQuery",
+        # Use the link above to specify the correct parameters for your template.
+        parameters={
+            "javascriptTextTransformFunctionName": "transformCSVtoJSON",
+            "JSONPath": bucket_path + "/${file_name}/composer/${file_name}.json",
+            "javascriptTextTransformGcsPath": bucket_path + "/${file_name}/composer/transformCSVtoJSON.js",
+            "inputFilePattern": "gs://${input_bucket}/${file_name}.csv",
+            "outputTable": project_id + ":${env}_${dataset_name}.${dataset_name}",
+            "bigQueryLoadingTemporaryDirectory": bucket_path + "/${file_name}/tmp/",
+        },
+    )
+
+    bq_training_job = BigQueryInsertJobOperator(
+        task_id="bq_training_job",
+        configuration={
+            "query": {
+                "query": f'''
+                        CREATE OR REPLACE MODEL`{project_id}.${env}_${dataset_name}.risk_model_all` 
+                        OPTIONS(model_type='BOOSTED_TREE_REGRESSOR',
+                        input_label_cols=['risk']) AS
+                        SELECT *
+                        FROM `{project_id}.${env}_${dataset_name}.${dataset_name}`
+                        ''',
+                "useLegacySql": False,
+            }
+        },
+        location="${bq_location}",
+    )
+
+    bq_inference_job = BigQueryInsertJobOperator(
+        task_id="bq_inference_job",
+        configuration={
+            "query": {
+                "query": f"""
+                        EXPORT DATA OPTIONS(
+                            uri='gs://${predicted_bucket}/predicted_risk_*.csv',
+                            format='CSV',
+                            overwrite=true,
+                            header=true,
+                            field_delimiter=';') AS
+                        SELECT DISTINCT * FROM ML.PREDICT(MODEL `{project_id}.${env}_${dataset_name}.risk_model_all`, (SELECT
+                            risk,
+                            clientID,
+                            dateID,
+                            avgMonthlyIncome,
+                            education,
+                            expSavings,
+                            expTransport,
+                            expGroceries,
+                            expLeisure,
+                            expShopping,
+                            expUtilities,
+                            expOther,
+                            cardLevel,
+                            amountDeposit,
+                            amountLoan,
+                            avgTransaction,
+                            avgNumTransactions,
+                            largestSingleTransaction
+                        FROM
+                          `{project_id}.${env}_${dataset_name}.${dataset_name}`))
+                        """,
+                "useLegacySql": False,
+            }
+        },
+        location="${bq_location}",
+    )
+
+start_template_job >> bq_training_job >> bq_inference_job

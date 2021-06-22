@@ -1,0 +1,47 @@
+{
+  "tickers": [
+      "AAPL",  "AMZN",  "GOOG", "FB", "MSFT", "TSLA", "NVDA", "IBM",
+      "SPY", "FXAIX", "VFINX", "OARMX",
+      "AMT", "PLD", "CCI", "EQIX",
+      "JNJ", "UNH", "PFE", "ABT",
+      "JPM", "V", "MA", "BAC", "PYPL", "WFC", "C"
+  ],
+  "startDate": "2017-01-01",
+  "tickersDescription": {
+      "AAPL": "Apple Inc.",
+      "AMZN": "Amazon.com, Inc.",
+      "GOOG": "Alphabet Inc.",
+      "FB": "Facebook, Inc.",
+      "MSFT": "Microsoft Corporation",
+      "TSLA": "Tesla, Inc.",
+      "NVDA": "NVIDIA Corporation",
+      "IBM": "International Business Machines",
+      "SPY": "SPDR S&P 500",
+      "FXAIX": "Fidelity 500 Index Fund",
+      "VFINX": "Vanguard Index Trust 500 Index ",
+      "OARMX": "Oakmark Fund Service Class",
+      "AMT": "American Tower Corporation (REI",
+      "PLD": "Prologis, Inc.",
+      "CCI": "Crown Castle International Corp",
+      "EQIX": "Equinix, Inc.",
+      "JNJ": "Johnson & Johnson",
+      "UNH": "UnitedHealth Group Incorporated",
+      "PFE": "Pfizer, Inc.",
+      "ABT": "Abbott Laboratories",
+      "JPM": "JP Morgan Chase & Co.",
+      "V": "Visa Inc.",
+      "MA": "Mastercard Incorporated",
+      "BAC": "Bank of America Corporation",
+      "PYPL": "PayPal Holdings, Inc.",
+      "WFC": "Wells Fargo & Company",
+      "C": "Citigroup, Inc."
+  },
+  "tickersExchange": {
+      "AAPL": "NMS", "AMZN": "NMS", "GOOG": "NMS", "FB": "NMS", "MSFT": "NMS", "TSLA": "NMS", "NVDA": "NMS",
+      "IBM": "NYQ", "SPY": "PCX", "FXAIX": "NAS", "VFINX": "NAS", "OARMX": "NAS", "AMT": "NYQ", "PLD": "NYQ",
+      "CCI": "NYQ", "EQIX": "NMS", "JNJ": "NYQ", "UNH": "NYQ", "PFE": "NYQ", "ABT": "NYQ", "JPM": "NYQ",
+      "V": "NYQ", "MA": "NYQ","BAC": "NYQ", "PYPL": "NMS", "WFC": "NYQ", "C": "NYQ"
+  },
+  "tickersExchangeTimezone": "EDT",
+  "tickersCurrency": "USD"
+}

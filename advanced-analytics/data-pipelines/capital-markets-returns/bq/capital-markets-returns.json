@@ -1,0 +1,142 @@
+[
+  {
+    "mode": "NULLABLE",
+    "name": "Date",
+    "type": "DATE"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "AAPL",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "AMZN",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "GOOG",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "FB",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "MSFT",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "TSLA",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "NVDA",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "IBM",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "SPY",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "FXAIX",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "VFINX",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "OARMX",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "AMT",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "PLD",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "CCI",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "EQIX",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "JNJ",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "UNH",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "PFE",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "ABT",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "JPM",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "V",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "MA",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "BAC",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "PYPL",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "WFC",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "C",
+    "type": "FLOAT"
+  }
+]

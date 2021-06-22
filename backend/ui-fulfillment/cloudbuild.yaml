@@ -1,0 +1,89 @@
+steps:
+  # Build docket image
+  - id: build-image
+    name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/$_NAME', '.' ]
+    dir: 'backend/$_NAME'
+
+  # Push the container image to Container Registry
+  - id: push-image
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/$_NAME']
+    waitFor: ['build-image']
+
+# Run migrations
+  - id: apply-migrations
+    name: 'gcr.io/google-appengine/exec-wrapper'
+    args: [
+      '-i', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA',
+      '-s', '$_CLOUDSQL_INSTANCE',
+      '-e', 'DATABASE_URL=$_DB_SECRET',
+      '-e', 'DJANGO_SECRET_KEY=$_DJANGO_SECRET_KEY',
+      '-e', 'DJANGO_ADMIN_URL=$_DJANGO_ADMIN_URL',
+      '-e', 'DJANGO_SUPERUSER_PASSWORD=$_DJANGO_SUPERUSER_PASSWORD',
+      '-e', 'DJANGO_SETTINGS_MODULE=$_DJANGO_SETTINGS_MODULE',
+      '-e', 'DJANGO_ALLOWED_HOSTS=$_DJANGO_ALLOWED_HOSTS',
+      '-e', 'ML_SERVICE_URL=$_ML_SERVICE_URL',
+      '-e', 'GS_BUCKET_NAME=$_GS_BUCKET_NAME',
+      '--', 'python', 'manage.py', 'migrate'
+      ]
+    waitFor: ['push-image']
+
+# Collect static files
+  - id: collect-static
+    name: 'gcr.io/google-appengine/exec-wrapper'
+    args: [
+      '-i', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA',
+      '-s', '$_CLOUDSQL_INSTANCE',
+      '-e', 'DATABASE_URL=$_DB_SECRET',
+      '-e', 'DJANGO_SECRET_KEY=$_DJANGO_SECRET_KEY',
+      '-e', 'DJANGO_ADMIN_URL=$_DJANGO_ADMIN_URL',
+      '-e', 'DJANGO_SUPERUSER_PASSWORD=$_DJANGO_SUPERUSER_PASSWORD',
+      '-e', 'DJANGO_SETTINGS_MODULE=$_DJANGO_SETTINGS_MODULE',
+      '-e', 'DJANGO_ALLOWED_HOSTS=$_DJANGO_ALLOWED_HOSTS',
+      '-e', 'ML_SERVICE_URL=$_ML_SERVICE_URL',
+      '-e', 'GS_BUCKET_NAME=$_GS_BUCKET_NAME',
+      '--', 'python', 'manage.py', 'collectstatic',
+      '--verbosity', '2',
+      '--no-input'
+      ]
+    waitFor: ['push-image']
+
+# Create Django Admin user
+  - id: django-admin
+    name: 'gcr.io/google-appengine/exec-wrapper'
+    args: [
+      '-i', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA',
+      '-s', '$_CLOUDSQL_INSTANCE',
+      '-e', 'DATABASE_URL=$_DB_SECRET',
+      '-e', 'DJANGO_SECRET_KEY=$_DJANGO_SECRET_KEY',
+      '-e', 'DJANGO_ADMIN_URL=$_DJANGO_ADMIN_URL',
+      '-e', 'DJANGO_SUPERUSER_PASSWORD=$_DJANGO_SUPERUSER_PASSWORD',
+      '-e', 'DJANGO_SETTINGS_MODULE=$_DJANGO_SETTINGS_MODULE',
+      '-e', 'DJANGO_ALLOWED_HOSTS=$_DJANGO_ALLOWED_HOSTS',
+      '-e', 'ML_SERVICE_URL=$_ML_SERVICE_URL',
+      '-e', 'GS_BUCKET_NAME=$_GS_BUCKET_NAME',
+      '--', 'python', 'manage.py', 'createsuperuser',
+      '--email', 'admin@admin.com',
+      '--username', 'admin',
+      '--verbosity', '2',
+      '--no-input'
+      ]
+    waitFor: ['apply-migrations']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'beta', 'run', 'deploy', '$_NAME',
+      '--image', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA',
+      '--region', '$_REGION',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--add-cloudsql-instances', "$_CLOUDSQL_INSTANCE",
+      '--set-env-vars', 'DATABASE_URL=$_DB_SECRET,DJANGO_SECRET_KEY=$_DJANGO_SECRET_KEY,DJANGO_ADMIN_URL=$_DJANGO_ADMIN_URL,DJANGO_SETTINGS_MODULE=$_DJANGO_SETTINGS_MODULE,DJANGO_ALLOWED_HOSTS=$_DJANGO_ALLOWED_HOSTS,ML_SERVICE_URL=$_ML_SERVICE_URL,GS_BUCKET_NAME=$_GS_BUCKET_NAME'
+      ]
+    waitFor: ['apply-migrations','collect-static','django-admin']
+
+images: ['gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA', 'gcr.io/$PROJECT_ID/$_NAME']
+timeout: '1200s'

@@ -1,0 +1,16 @@
+numpy==1.20.2
+pandas==1.2.4
+scikit-learn==0.24.1
+scipy==1.6.2
+gcsfs==0.8.0
+google-api-core==1.26.3
+google-api-python-client==2.2.0
+google-auth==1.29.0
+google-auth-httplib2==0.1.0
+google-auth-oauthlib==0.4.4
+google-cloud==0.34.0
+google-cloud-core==1.6.0
+google-cloud-storage==1.37.1
+google-crc32c==1.1.2
+google-resumable-media==1.2.0
+googleapis-common-protos==1.53.0

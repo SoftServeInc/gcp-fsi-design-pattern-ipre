@@ -1,0 +1,53 @@
+steps:
+  # Create .env file
+  - id: env-file
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - echo 'REACT_APP_API_URL=$_REACT_APP_API_URL/api/v1/' > .env
+    dir: 'frontend/$_NAME'
+
+  # Install yarm
+  - id: yarn-install
+    name: gcr.io/cloud-builders/yarn
+    args: ['install', '--ignore-engines']
+    dir: 'frontend/$_NAME'
+    waitFor: ['env-file']
+    timeout: '120s'
+
+  # Yarn build
+  - id: yarn-build
+    name: gcr.io/cloud-builders/yarn
+    args: ['build']
+    dir: 'frontend/$_NAME'
+    waitFor: ['yarn-install']
+    timeout: '600s'
+
+  # Build docket image
+  - id: build-image
+    name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/$_NAME', '.' ]
+    dir: 'frontend/$_NAME'
+    waitFor: ['yarn-build']
+
+  # Push the container image to Container Registry
+  - id: push-image
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/$_NAME']
+    waitFor: ['build-image']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', '$_NAME',
+      '--image', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA',
+      '--region', '$_REGION',
+      '--platform', 'managed',
+      '--allow-unauthenticated'
+      ]
+    waitFor: ['push-image']
+
+images: ['gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA', 'gcr.io/$PROJECT_ID/$_NAME']
+timeout: '1200s'

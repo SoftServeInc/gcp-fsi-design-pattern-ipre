@@ -1,0 +1,212 @@
+import datetime
+
+from airflow import models
+from airflow.contrib.operators.dataflow_operator import DataflowTemplateOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from airflow.operators.python_operator import PythonOperator
+from airflow.utils.dates import days_ago
+from airflow.utils.helpers import chain
+
+# Required for the monkey patch
+from airflow.contrib.hooks.gcp_dataflow_hook import DataFlowHook, _DataflowJob
+# We redefine the function that handles the environment keys 
+# that are used to build the RuntimeEnvironment, to include 'ipConfiguration'
+def _start_template_dataflow(self, name, variables, parameters,
+                             dataflow_template):
+    # Builds RuntimeEnvironment from variables dictionary
+    # https://cloud.google.com/dataflow/docs/reference/rest/v1b3/RuntimeEnvironment
+    environment = {}
+    for key in ['numWorkers', 'maxWorkers', 'zone', 'serviceAccountEmail',
+                'tempLocation', 'bypassTempDirValidation', 'machineType',
+                'additionalExperiments', 'network', 'subnetwork', 'additionalUserLabels',
+                'ipConfiguration']:
+        if key in variables:
+            environment.update({key: variables[key]})
+    body = {"jobName": name,
+            "parameters": parameters,
+            "environment": environment}
+    service = self.get_conn()
+    request = service.projects().locations().templates().launch(
+        projectId=variables['project'],
+        location=variables['region'],
+        gcsPath=dataflow_template,
+        body=body
+    )
+    response = request.execute(num_retries=self.num_retries)
+    variables = self._set_variables(variables)
+    _DataflowJob(self.get_conn(), variables['project'], name, variables['region'],
+                 self.poll_sleep, num_retries=self.num_retries).wait_for_done()
+    return response
+# Monkey patching
+DataFlowHook._start_template_dataflow = _start_template_dataflow
+
+bucket_path = models.Variable.get("bucket_path")
+project_id = models.Variable.get("project_id")
+gce_zone = models.Variable.get("gce_zone")
+gce_region = models.Variable.get("gce_region")
+gce_network = models.Variable.get("gce_network")
+gce_subnetwork = models.Variable.get("gce_subnetwork")
+
+default_args = {
+    # Tell airflow to start one day ago, so that it runs as soon as you upload it
+    "start_date": days_ago(1),
+    "dataflow_default_options": {
+        "project": project_id,
+        # Set to your region
+        "region": gce_region,
+        # Set to your zone
+        "zone": gce_zone,
+        # This is a subfolder for storing temporary files, like the staged pipeline job.
+        "temp_location": bucket_path + "/tmp/",
+        # Use dedicated network for Dataflow workers
+        "network": gce_network,
+        "subnetwork": "regions/" + gce_region + "/subnetworks/" + gce_subnetwork,
+        # Use private IP addresses
+        "ipConfiguration": "WORKER_IP_PRIVATE",
+    },
+}
+
+# Inference function start
+import pandas as pd
+from google.cloud import bigquery
+from google.cloud import storage
+class ForecastBQ:
+    """
+        Class to perform forecasting of market returns.
+    """
+    def __init__(self):
+        self.client = bigquery.Client()
+        self.returnsBucket: str = '${predicted_bucket}'
+        self.fileName: str = '${file_name}-forecasted.csv'
+        self.datasetId: str = '${env}_${dataset_name}'
+        self.forecastedReturns: pd.DataFrame = pd.DataFrame()
+        self.models: list = None
+        self.tickers: list = None
+
+    def get_models_list(self) -> list:
+        """ Return the list of trained model in dev_capital_market_returns BQ dataframe.
+
+        Returns:
+            models (list): list of strings of model names.
+
+        """
+        models_iterator = self.client.list_models(self.datasetId)
+        self.models = ["{}.{}.{}".format(model.project, model.dataset_id, model.model_id) for model in models_iterator]
+        return self.models
+
+    def get_prediction(self) -> pd.DataFrame:
+        """ Forecasted values for the next date point.
+
+        Returns:
+            forecastedReturns (pd.DataFrame): predicted values in pd.DataFrame format;
+
+        """
+        self.get_models_list()
+        for model in self.models:
+            query_job = self.client.query(
+                f"""
+                SELECT DISTINCT * FROM ML.FORECAST(MODEL `{model}`, 
+                STRUCT(1 AS horizon, 0.95 AS confidence_level))
+                """
+            )
+            results = query_job.result().to_dataframe()
+            results.loc[:, 'ticker'] = model
+            results.ticker = results.ticker.apply(lambda x: x.split('.')[-1].
+                                                  replace('arima_model_', ''))
+            self.forecastedReturns = self.forecastedReturns.append(results)
+
+        return self.forecastedReturns
+
+    def transform_prediction(self) -> pd.DataFrame:
+        """ Transforms format of predicted dataframe into reusable format.
+
+        Returns:
+            Transformed data (pd.DataFrame): preprocessed data, ready to be uploaded.
+
+        """
+        self.get_prediction()
+        self.forecastedReturns = self.forecastedReturns.loc[:, ['forecast_value', 'ticker']].\
+            set_index(['ticker'])
+        self.forecastedReturns = self.forecastedReturns.loc[:, 'forecast_value']
+        return self.forecastedReturns
+
+    def upload_to_bucket(self):
+        """
+
+        Uploads forecasted values to GCS bucket.
+
+        """
+        self.transform_prediction()
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(self.returnsBucket)
+        bucket.blob(self.fileName).upload_from_string(self.forecastedReturns.to_csv(), 'text/csv')
+
+
+def batch_predict():
+    ForecastBQ_object = ForecastBQ()
+    ForecastBQ_object.upload_to_bucket()
+# Inference function end
+
+# Define a DAG (directed acyclic graph) of tasks.
+# Any task you create within the context manager is automatically added to the
+# DAG object.
+with models.DAG(
+    # The id you will see in the DAG airflow page
+    "${file_name}-dag",
+    default_args=default_args,
+    # The interval with which to schedule the DAG
+    schedule_interval=None,  # Override to match your needs
+) as dag:
+
+    start_template_job = DataflowTemplateOperator(
+        # The task id of your job
+        task_id="dataflow-operator-${file_name}",
+        # The name of the template that you're using.
+        # Below is a list of all the templates you can use.
+        # For versions in non-production environments, use the subfolder 'latest'
+        # https://cloud.google.com/dataflow/docs/guides/templates/provided-batch#gcstexttobigquery
+        template="gs://dataflow-templates/latest/GCS_Text_to_BigQuery",
+        # Use the link above to specify the correct parameters for your template.
+        parameters={
+            "javascriptTextTransformFunctionName": "transformCSVtoJSON",
+            "JSONPath": bucket_path + "/${file_name}/composer/${file_name}.json",
+            "javascriptTextTransformGcsPath": bucket_path + "/${file_name}/composer/transformCSVtoJSON.js",
+            "inputFilePattern": "gs://${input_bucket}/${file_name}.csv",
+            "outputTable": project_id + ":${env}_${dataset_name}.${dataset_name}",
+            "bigQueryLoadingTemporaryDirectory": bucket_path + "/${file_name}/tmp/",
+        },
+    )
+
+    ops = []
+    tickers_list = [%{ for ticker in tickers_list ~}
+                    "${ticker}",
+                    %{ endfor ~}]
+    for ticker in tickers_list:
+        ops.append(BigQueryInsertJobOperator(
+        task_id=f"bq_training_job_{ticker}",
+        configuration={
+            "query": {
+                "query": f'''
+                        CREATE OR REPLACE MODEL `{project_id}.${env}_${dataset_name}.arima_model_{ticker}`
+                      
+                        OPTIONS(
+                            MODEL_TYPE='ARIMA',
+                            TIME_SERIES_TIMESTAMP_COL='Date', 
+                            TIME_SERIES_DATA_COL= '{ticker}', 
+                            HOLIDAY_REGION='US'
+                        ) AS
+                      
+                        SELECT Date, {ticker} FROM `{project_id}.${env}_${dataset_name}.${dataset_name}`
+                        ''',
+                "useLegacySql": False,
+            }
+        },
+        location="${bq_location}",
+        ))
+
+    bq_inference_job = PythonOperator(
+    task_id='bq_inference_job',
+    python_callable=batch_predict,
+)
+
+chain(start_template_job, ops, bq_inference_job)

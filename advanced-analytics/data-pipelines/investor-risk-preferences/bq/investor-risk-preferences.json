@@ -1,0 +1,92 @@
+[
+ {
+ "mode": "NULLABLE",
+ "name": "risk",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "clientID",
+ "type": "STRING"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "dateID",
+ "type": "DATE"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "avgMonthlyIncome",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "education",
+ "type": "STRING"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "expSavings",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "expTransport",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "expGroceries",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "expLeisure",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "expShopping",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "expUtilities",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "expOther",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "cardLevel",
+ "type": "INTEGER"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "amountDeposit",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "amountLoan",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "avgTransaction",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "avgNumTransactions",
+ "type": "FLOAT"
+ },
+ {
+ "mode": "NULLABLE",
+ "name": "largestSingleTransaction",
+ "type": "FLOAT"
+ }
+]

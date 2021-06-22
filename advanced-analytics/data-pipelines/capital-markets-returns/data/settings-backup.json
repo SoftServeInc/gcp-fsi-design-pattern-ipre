@@ -1,0 +1,13 @@
+{
+    "tickers": [
+        "AAPL",  "AMZN",  "GOOG", "FB", "MSFT", "TSLA", "NVDA", "IBM",
+        "BTC-USD",
+        "SPY", "FXAIX", "VFINX", "OARMX",
+        "EURUSD=X", "GBPUSD=X", "JPY=X",
+        "AMT", "PLD", "CCI", "EQIX",
+        "JNJ", "UNH", "PFE", "ABT",
+        "JPM", "V", "MA", "BAC", "PYPL", "WFC", "C"
+    ],
+    "startDate": "2017-01-01",
+    "batchFetch": true
+}

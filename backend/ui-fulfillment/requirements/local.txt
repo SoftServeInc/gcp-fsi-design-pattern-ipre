@@ -1,0 +1,30 @@
+-r base.txt
+
+# Testing
+# ------------------------------------------------------------------------------
+pytest==6.2.4  # https://github.com/pytest-dev/pytest
+pytest-sugar==0.9.4  # https://github.com/Frozenball/pytest-sugar
+pytest-mock==3.6.1  # https://github.com/pytest-dev/pytest-mock/
+requests-mock==1.9.3  # https://github.com/jamielennox/requests-mock
+
+# Code quality
+# ------------------------------------------------------------------------------
+flake8==3.9.2  # https://github.com/PyCQA/flake8
+flake8-isort==4.0.0  # https://github.com/gforcada/flake8-isort
+coverage==5.5  # https://github.com/nedbat/coveragepy
+black==21.5b1  # https://github.com/ambv/black
+pre-commit==2.12.1  # https://github.com/pre-commit/pre-commit
+
+# Django
+# ------------------------------------------------------------------------------
+factory-boy==3.2.0  # https://github.com/FactoryBoy/factory_boy
+
+django-debug-toolbar==3.2.1  # https://github.com/jazzband/django-debug-toolbar
+django-extensions==3.1.3  # https://github.com/django-extensions/django-extensions
+django-coverage-plugin==1.8.0  # https://github.com/nedbat/django_coverage_plugin
+pytest-django==4.3.0  # https://github.com/pytest-dev/pytest-django
+
+# Schema generation
+# ------------------------------------------------------------------------------
+pyyaml == 5.4.1  # https://github.com/yaml/pyyaml
+uritemplate == 3.0.1  # https://github.com/python-hyper/uritemplate

@@ -1,0 +1,29 @@
+
+steps:
+  # Build docket image
+  - id: build-image
+    name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/$_NAME', '.' ]
+    dir: 'advanced-analytics/$_NAME'
+
+  # Push the container image to Container Registry
+  - id: push-image
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/$_NAME']
+    waitFor: ['build-image']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'beta', 'run', 'deploy', '$_NAME',
+      '--image', 'gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA',
+      '--region', '$_REGION',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--set-env-vars', 'PROJECT_ID=$_PROJECT_ID,QUOTES_BUCKET=$_QUOTES_BUCKET,QUOTES_BLOB=$_QUOTES_BLOB,PREDICTED_RETURNS_BUCKET=$_PREDICTED_RETURNS_BUCKET,PREDICTED_RETURNS_BLOB=$_PREDICTED_RETURNS_BLOB,PREDICTED_IRP_BUCKET=$_PREDICTED_IRP_BUCKET,PREDICTED_IRP_BLOB=$_PREDICTED_IRP_BLOB'
+      ]
+    waitFor: ['push-image']
+
+images: ['gcr.io/$PROJECT_ID/$_NAME:$SHORT_SHA', 'gcr.io/$PROJECT_ID/$_NAME']
+timeout: '1200s'

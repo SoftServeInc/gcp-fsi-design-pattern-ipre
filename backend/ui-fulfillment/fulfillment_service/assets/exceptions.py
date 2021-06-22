@@ -1,0 +1,2 @@
+class MLServiceError(Exception):
+    pass

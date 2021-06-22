@@ -1,0 +1,10 @@
+{
+    "tickers": [
+        "AAPL",  "AMZN",  "GOOG", "FB", "MSFT", "TSLA", "NVDA", "IBM",
+        "SPY", "FXAIX", "VFINX", "OARMX",
+        "AMT", "PLD", "CCI", "EQIX",
+        "JNJ", "UNH", "PFE", "ABT",
+        "JPM", "V", "MA", "BAC", "PYPL", "WFC", "C"
+    ],
+    "startDate": "2017-01-01"
+}
