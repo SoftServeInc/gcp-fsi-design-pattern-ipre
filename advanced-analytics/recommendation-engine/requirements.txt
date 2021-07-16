@@ -35,6 +35,6 @@ threadpoolctl==2.1.0
 urllib3==1.26.4
 Flask==2.0.0
 gunicorn==20.1.0  # https://github.com/benoitc/gunicorn
-yfinance==0.1.59
+yfinance==0.1.63
 fsspec==2021.5.0
 gcsfs==2021.5.0

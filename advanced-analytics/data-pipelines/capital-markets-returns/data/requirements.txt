@@ -1,7 +1,7 @@
 # Function dependencies, for example:
 # package>=version
 gcsfs==0.8.0
-yfinance==0.1.59
+yfinance==0.1.63
 pandas==1.2.4
 google-api-core==1.26.3
 google-api-python-client==2.2.0
